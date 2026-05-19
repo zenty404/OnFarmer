@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -7,6 +8,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,13 +17,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Parcel, Alert as AlertType } from '../types/database.types';
 import { getTodayAlert, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { MapPin, Plus, LogOut } from 'lucide-react-native';
-
-type RootStackParamList = {
-  Dashboard: undefined;
-  Map: undefined;
-  ParcelDetail: { parcelId: string };
-};
+import { MapPin, Plus, LogOut, Sprout } from 'lucide-react-native';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -38,22 +35,23 @@ export const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      fetchParcels();
-      subscribeToAlerts();
-    }
+    if (!user) return;
+    const cleanup = subscribeToAlerts();
+    return cleanup;
   }, [user]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (user) fetchParcels();
+    }, [user])
+  );
+
   const subscribeToAlerts = () => {
-    const subscription = supabase
-      .channel('alertes-channel')
+    const channel = supabase
+      .channel('dashboard-alertes')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alertes',
-        },
+        { event: 'INSERT', schema: 'public', table: 'alertes' },
         (payload) => {
           const newAlert = payload.new as AlertType;
           setParcels((prev) =>
@@ -68,11 +66,11 @@ export const DashboardScreen: React.FC = () => {
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   };
 
-  const fetchParcels = async () => {
+  const fetchParcels = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('parcels')
@@ -81,41 +79,49 @@ export const DashboardScreen: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      if (!data) return;
 
-      if (data) {
-        const parcelsWithAlerts = await Promise.all(
-          data.map(async (parcel) => {
-            try {
-              const alert = await getTodayAlert(parcel.id);
-              if (!alert) {
-                // Pas d'alerte pour aujourd'hui, déclencher l'analyse
-                triggerAIAnalysis(parcel.id).catch(console.error);
-                return { ...parcel, alert: null, loadingAlert: true };
-              }
-              return { ...parcel, alert, loadingAlert: false };
-            } catch (error) {
-              console.error('Error fetching alert:', error);
-              return { ...parcel, alert: null, loadingAlert: false };
+      const parcelsWithAlerts = await Promise.all(
+        data.map(async (parcel) => {
+          try {
+            const alert = await getTodayAlert(parcel.id);
+            if (!alert) {
+              triggerAIAnalysis(parcel.id, parcel.latitude, parcel.longitude).catch(
+                console.error
+              );
+              return { ...parcel, alert: null, loadingAlert: true };
             }
-          })
-        );
-        setParcels(parcelsWithAlerts);
-      }
-    } catch (error) {
-      console.error('Error fetching parcels:', error);
-      Alert.alert('Erreur', 'Impossible de charger les parcelles');
+            return { ...parcel, alert, loadingAlert: false };
+          } catch {
+            return { ...parcel, alert: null, loadingAlert: false };
+          }
+        })
+      );
+
+      setParcels(parcelsWithAlerts);
+    } catch {
+      Alert.alert('Erreur', 'Impossible de charger les parcelles.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user]);
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de se déconnecter');
-    }
+    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch {
+            Alert.alert('Erreur', 'Impossible de se déconnecter.');
+          }
+        },
+      },
+    ]);
   };
 
   const onRefresh = () => {
@@ -126,94 +132,137 @@ export const DashboardScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <Text>Chargement...</Text>
+        <ActivityIndicator size="large" color="#10b981" />
+        <Text style={styles.loadingLabel}>Chargement de vos parcelles...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>🌾 Agri Météo</Text>
           <Text style={styles.headerSubtitle}>
-            Bienvenue, {profile?.full_name || 'Agriculteur'}
+            Bonjour, {profile?.full_name || 'Agriculteur'} 👋
           </Text>
         </View>
         <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
-          <LogOut size={24} color="#ef4444" />
+          <LogOut size={20} color="#ef4444" />
         </TouchableOpacity>
       </View>
 
+      {/* Stats bar */}
+      <View style={styles.statsBar}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{parcels.length}</Text>
+          <Text style={styles.statLabel}>Parcelle{parcels.length !== 1 ? 's' : ''}</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {parcels.filter((p) => p.alert?.niveau === 'élevé').length}
+          </Text>
+          <Text style={styles.statLabel}>Alerte{parcels.filter((p) => p.alert?.niveau === 'élevé').length !== 1 ? 's' : ''} élevée{parcels.filter((p) => p.alert?.niveau === 'élevé').length !== 1 ? 's' : ''}</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>
+            {parcels.filter((p) => p.alert?.niveau === 'faible').length}
+          </Text>
+          <Text style={styles.statLabel}>OK</Text>
+        </View>
+      </View>
+
       <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mes Parcelles</Text>
+        {/* Section header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Mes parcelles</Text>
+          <TouchableOpacity
+            style={styles.mapButton}
+            onPress={() => navigation.navigate('Map')}
+          >
+            <MapPin size={16} color="#3b82f6" />
+            <Text style={styles.mapButtonText}>Carte</Text>
+          </TouchableOpacity>
+        </View>
+
+        {parcels.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Sprout size={52} color="#d1fae5" />
+            <Text style={styles.emptyTitle}>Aucune parcelle</Text>
+            <Text style={styles.emptySubtext}>
+              Appuyez sur le bouton + pour ajouter votre première parcelle et recevoir des alertes météo IA.
+            </Text>
             <TouchableOpacity
-              style={styles.mapButton}
-              onPress={() => navigation.navigate('Map')}
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate('AddParcel')}
             >
-              <MapPin size={20} color="#fff" />
-              <Text style={styles.mapButtonText}>Carte</Text>
+              <Plus size={18} color="#fff" />
+              <Text style={styles.emptyButtonText}>Ajouter une parcelle</Text>
             </TouchableOpacity>
           </View>
-
-          {parcels.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
-                Aucune parcelle enregistrée
-              </Text>
-              <Text style={styles.emptySubtext}>
-                Ajoutez votre première parcelle pour commencer
-              </Text>
-            </View>
-          ) : (
-            parcels.map((parcel) => (
-              <TouchableOpacity
-                key={parcel.id}
-                style={styles.parcelCard}
-                onPress={() =>
-                  navigation.navigate('ParcelDetail', { parcelId: parcel.id })
-                }
-              >
-                <View style={styles.parcelHeader}>
-                  <View>
-                    <Text style={styles.parcelName}>{parcel.name}</Text>
-                    <Text style={styles.parcelInfo}>
-                      {parcel.crop_type || 'Culture non spécifiée'} •{' '}
-                      {parcel.area_hectares?.toFixed(1) || '?'} ha
+        ) : (
+          parcels.map((parcel) => (
+            <TouchableOpacity
+              key={parcel.id}
+              style={styles.parcelCard}
+              onPress={() => navigation.navigate('ParcelDetail', { parcelId: parcel.id })}
+              activeOpacity={0.88}
+            >
+              {/* Card header */}
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleGroup}>
+                  <Text style={styles.parcelName}>{parcel.name}</Text>
+                  <Text style={styles.parcelMeta}>
+                    {[parcel.crop_type, parcel.area_hectares ? `${parcel.area_hectares.toFixed(1)} ha` : null]
+                      .filter(Boolean)
+                      .join(' · ') || 'Culture non précisée'}
+                  </Text>
+                </View>
+                {parcel.alert ? (
+                  <View
+                    style={[
+                      styles.levelBadge,
+                      { backgroundColor: getAlertColor(parcel.alert.niveau) },
+                    ]}
+                  >
+                    <Text style={styles.levelBadgeText}>
+                      {parcel.alert.niveau.toUpperCase()}
                     </Text>
                   </View>
-                  {parcel.alert && (
-                    <View
-                      style={[
-                        styles.levelBadge,
-                        { backgroundColor: getAlertColor(parcel.alert.niveau) },
-                      ]}
-                    >
-                      <Text style={styles.levelBadgeText}>
-                        {parcel.alert.niveau}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                ) : null}
+              </View>
 
-                <AlertCard
-                  alert={parcel.alert || null}
-                  loading={parcel.loadingAlert}
-                />
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+              {/* Coords */}
+              <View style={styles.coordRow}>
+                <MapPin size={12} color="#9ca3af" />
+                <Text style={styles.coordText}>
+                  {parcel.latitude.toFixed(4)}, {parcel.longitude.toFixed(4)}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* Alert card */}
+              <AlertCard alert={parcel.alert ?? null} loading={parcel.loadingAlert} />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab}>
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddParcel')}
+        activeOpacity={0.85}
+      >
         <Plus size={28} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -229,36 +278,71 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  loadingLabel: {
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 16,
     backgroundColor: '#10b981',
   },
+  headerLeft: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    marginTop: 4,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 3,
   },
   logoutButton: {
-    padding: 8,
+    padding: 10,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  content: {
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#059669',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginVertical: 4,
+  },
+  scroll: {
     flex: 1,
   },
-  section: {
+  scrollContent: {
     padding: 20,
+    paddingBottom: 100,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -267,89 +351,130 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1f2937',
   },
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3b82f6',
+    gap: 5,
+    backgroundColor: '#eff6ff',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
-    gap: 4,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
   },
   mapButtonText: {
-    color: '#fff',
+    color: '#3b82f6',
     fontWeight: '600',
+    fontSize: 14,
   },
   parcelCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
   },
-  parcelHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 6,
+  },
+  cardTitleGroup: {
+    flex: 1,
+    marginRight: 10,
   },
   parcelName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  parcelInfo: {
-    fontSize: 14,
+  parcelMeta: {
+    fontSize: 13,
     color: '#6b7280',
   },
   levelBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 20,
   },
   levelBadgeText: {
     color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  coordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 14,
+  },
+  coordText: {
     fontSize: 12,
-    fontWeight: '600',
+    color: '#9ca3af',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#f3f4f6',
+    marginBottom: 12,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    paddingVertical: 48,
+    paddingHorizontal: 20,
   },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#374151',
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#9ca3af',
     textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#10b981',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 28,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#10b981',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
   },
 });
