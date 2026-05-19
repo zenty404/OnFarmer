@@ -280,6 +280,23 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.footerLinkText}>Contact & Support</Text>
             </TouchableOpacity>
           </View>
+          <Text style={styles.followLabel}>Suivez-nous</Text>
+          <View style={styles.socialRow}>
+            {[
+              { label: 'in',  bg: '#0077b5', name: 'LinkedIn'   },
+              { label: '𝕏',   bg: '#000000', name: 'Twitter / X' },
+              { label: '▶',  bg: '#e1306c', name: 'Instagram'   },
+            ].map(({ label, bg, name }) => (
+              <TouchableOpacity
+                key={name}
+                style={[styles.socialIcon, { backgroundColor: bg }]}
+                onPress={() => Alert.alert(name, `Ouverture de ${name}...`)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.socialIconText}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <Text style={styles.footerCopyright}>© 2025 OnFarmer — Projet Sup de Vinci</Text>
         </View>
       </ScrollView>
@@ -382,6 +399,13 @@ const styles = StyleSheet.create({
   footerLinkText: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
   footerSep: { width: 1, height: 14, backgroundColor: '#d1d5db' },
   footerCopyright: { fontSize: 11, color: '#d1d5db', marginTop: 4 },
+  followLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
+  socialRow: { flexDirection: 'row', gap: 12 },
+  socialIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  socialIconText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
   },
