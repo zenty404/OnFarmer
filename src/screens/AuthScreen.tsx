@@ -46,7 +46,7 @@ export const AuthScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>🌾 Agri Météo</Text>
+        <Text style={styles.title}>🌾 OnFarmer</Text>
         <Text style={styles.subtitle}>
           Prédiction des rendements agricoles
         </Text>

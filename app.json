@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Agri Météo",
-    "slug": "app-agri-meteo",
+    "name": "OnFarmer",
+    "slug": "onfarmer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.agrimeteo.app",
+      "bundleIdentifier": "com.onfarmer.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Nous avons besoin de votre localisation pour afficher vos parcelles sur la carte."
       }
@@ -26,7 +26,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.agrimeteo.app",
+      "package": "com.onfarmer.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
@@ -44,7 +44,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Autoriser Agri Météo à accéder à votre position pour localiser vos parcelles."
+          "locationAlwaysAndWhenInUsePermission": "Autoriser OnFarmer à accéder à votre position pour localiser vos parcelles."
         }
       ]
     ]

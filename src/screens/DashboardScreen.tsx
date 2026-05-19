@@ -143,7 +143,7 @@ export const DashboardScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>🌾 Agri Météo</Text>
+          <Text style={styles.headerTitle}>🌾 OnFarmer</Text>
           <Text style={styles.headerSubtitle}>
             Bonjour, {profile?.full_name || 'Agriculteur'} 👋
           </Text>
