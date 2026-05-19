@@ -6,12 +6,14 @@ import { AuthScreen } from '../screens/AuthScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MapScreen } from '../screens/MapScreen';
 import { ParcelDetailScreen } from '../screens/ParcelDetailScreen';
+import { AddParcelScreen } from '../screens/AddParcelScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
   Dashboard: undefined;
   Map: undefined;
   ParcelDetail: { parcelId: string };
+  AddParcel: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -19,17 +21,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const AppNavigator: React.FC = () => {
   const { session, loading } = useAuth();
 
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!session ? (
           <Stack.Screen name="Auth" component={AuthScreen} />
         ) : (
@@ -37,6 +33,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Map" component={MapScreen} />
             <Stack.Screen name="ParcelDetail" component={ParcelDetailScreen} />
+            <Stack.Screen name="AddParcel" component={AddParcelScreen} />
           </>
         )}
       </Stack.Navigator>
