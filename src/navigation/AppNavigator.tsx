@@ -8,6 +8,7 @@ import { MapScreen } from '../screens/MapScreen';
 import { ParcelDetailScreen } from '../screens/ParcelDetailScreen';
 import { AddParcelScreen } from '../screens/AddParcelScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { AdminScreen } from '../screens/AdminScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   ParcelDetail: { parcelId: string };
   AddParcel: undefined;
   Profile: undefined;
+  Admin: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -37,6 +39,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="ParcelDetail" component={ParcelDetailScreen} />
             <Stack.Screen name="AddParcel" component={AddParcelScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
           </>
         )}
       </Stack.Navigator>
