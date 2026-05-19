@@ -23,6 +23,21 @@ export const getTodayAlert = async (parcelId: string): Promise<Alert | null> => 
   return data;
 };
 
+export const getPastAlerts = async (parcelId: string): Promise<Alert[]> => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('alertes')
+    .select('*')
+    .eq('parcel_id', parcelId)
+    .lt('date_prevision', today)
+    .order('date_prevision', { ascending: false })
+    .limit(10);
+
+  if (error) throw error;
+  return data ?? [];
+};
+
 export const getActiveAlerts = async (parcelId: string): Promise<Alert[]> => {
   const today = new Date().toISOString().split('T')[0];
 

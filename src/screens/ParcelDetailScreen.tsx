@@ -12,9 +12,9 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../config/supabase';
 import { Parcel, Alert, WeatherLog } from '../types/database.types';
-import { getActiveAlerts, triggerAIAnalysis } from '../utils/alerts';
+import { getActiveAlerts, getPastAlerts, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { ArrowLeft, MapPin, Droplets, ThermometerSun, Wind, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Droplets, ThermometerSun, Wind, RefreshCw, History, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type ParcelDetailRouteProp = RouteProp<RootStackParamList, 'ParcelDetail'>;
@@ -34,6 +34,9 @@ export const ParcelDetailScreen: React.FC = () => {
   const [loadingAlert, setLoadingAlert] = useState(false);
   const [analysisTimedOut, setAnalysisTimedOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pastAlerts, setPastAlerts] = useState<Alert[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollAttempts = useRef(0);
@@ -170,6 +173,18 @@ export const ParcelDetailScreen: React.FC = () => {
     }
   };
 
+  const handleToggleHistory = async () => {
+    if (showHistory) { setShowHistory(false); return; }
+    setShowHistory(true);
+    if (pastAlerts.length > 0) return;
+    setLoadingHistory(true);
+    try {
+      const past = await getPastAlerts(parcelId);
+      setPastAlerts(past);
+    } catch { /* silent */ }
+    finally { setLoadingHistory(false); }
+  };
+
   const handleRetry = async () => {
     if (!parcel) return;
     setAnalysisTimedOut(false);
@@ -270,6 +285,56 @@ export const ParcelDetailScreen: React.FC = () => {
           ) : (
             alerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
           )}
+        </View>
+
+        {/* ── Historique des diagnostics ── */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.historyToggle} onPress={handleToggleHistory} activeOpacity={0.8}>
+            <View style={styles.historyToggleLeft}>
+              <History size={16} color="#6b7280" />
+              <Text style={styles.historyToggleText}>Historique des diagnostics</Text>
+            </View>
+            {showHistory
+              ? <ChevronUp size={16} color="#6b7280" />
+              : <ChevronDown size={16} color="#6b7280" />}
+          </TouchableOpacity>
+
+          {showHistory ? (
+            loadingHistory ? (
+              <View style={styles.historyLoading}>
+                <ActivityIndicator size="small" color="#10b981" />
+                <Text style={styles.historyLoadingText}>Chargement de l'historique...</Text>
+              </View>
+            ) : pastAlerts.length === 0 ? (
+              <View style={styles.historyEmpty}>
+                <Text style={styles.historyEmptyText}>Aucun diagnostic passé pour cette parcelle.</Text>
+              </View>
+            ) : (
+              pastAlerts.map((alert) => {
+                const color = getAlertColor(alert.niveau);
+                return (
+                  <View key={alert.id} style={[styles.historyCard, { borderLeftColor: color }]}>
+                    <View style={styles.historyCardHeader}>
+                      <View style={[styles.historyBadge, { backgroundColor: color + '20' }]}>
+                        <Text style={[styles.historyBadgeText, { color }]}>
+                          {alert.niveau.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={styles.historyDate}>
+                        {new Date(alert.date_prevision).toLocaleDateString('fr-FR', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyRisk}>{alert.type_risque}</Text>
+                    {alert.recommandation ? (
+                      <Text style={styles.historyReco}>{alert.recommandation}</Text>
+                    ) : null}
+                  </View>
+                );
+              })
+            )
+          ) : null}
         </View>
 
         {/* Historique météo */}
@@ -500,5 +565,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1f2937',
+  },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 8,
+  },
+  historyToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  historyToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  historyLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  historyLoadingText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  historyEmpty: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  historyEmptyText: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  historyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  historyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  historyBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  historyDate: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  historyRisk: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  historyReco: {
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 17,
   },
 });
