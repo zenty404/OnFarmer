@@ -16,36 +16,39 @@ export const getTodayAlert = async (parcelId: string): Promise<Alert | null> => 
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows returned
-      return null;
-    }
+    if (error.code === 'PGRST116') return null;
     throw error;
   }
 
   return data;
 };
 
-export const triggerAIAnalysis = async (parcelId: string): Promise<void> => {
-  try {
-    const response = await fetch(MAKE_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        parcel_id: parcelId,
-        date: new Date().toISOString().split('T')[0],
-      }),
-    });
+export const getActiveAlerts = async (parcelId: string): Promise<Alert[]> => {
+  const today = new Date().toISOString().split('T')[0];
 
-    if (!response.ok) {
-      throw new Error('Failed to trigger AI analysis');
-    }
-  } catch (error) {
-    console.error('Error triggering AI analysis:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('alertes')
+    .select('*')
+    .eq('parcel_id', parcelId)
+    .gte('date_prevision', today)
+    .order('date_prevision', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const triggerAIAnalysis = async (
+  parcelId: string,
+  latitude: number,
+  longitude: number
+): Promise<void> => {
+  const response = await fetch(MAKE_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parcel_id: parcelId, latitude, longitude }),
+  });
+
+  if (!response.ok) throw new Error('Failed to trigger AI analysis');
 };
 
 export const getAlertColor = (niveau: Alert['niveau']): string => {
