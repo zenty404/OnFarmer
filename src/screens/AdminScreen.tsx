@@ -224,6 +224,7 @@ export const AdminScreen: React.FC = () => {
           <Text style={styles.loaderText}>Chargement des données...</Text>
         </View>
       ) : (
+        <>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
           {/* Stats */}
@@ -288,7 +289,7 @@ export const AdminScreen: React.FC = () => {
             ))}
           </View>
 
-          {/* ── Configuration Système ── */}
+          {/* Configuration Système */}
           <Text style={styles.sectionTitle}>Configuration Système</Text>
           <View style={styles.configCard}>
             <View style={styles.configRow}>
@@ -334,7 +335,7 @@ export const AdminScreen: React.FC = () => {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* ── Modal config IA ── */}
+        {/* Modal config IA */}
         <Modal visible={showAIModal} animationType="slide" transparent presentationStyle="overFullScreen">
           <View style={styles.modalOverlay}>
             <SafeAreaView style={styles.modalSheet}>
@@ -376,6 +377,7 @@ export const AdminScreen: React.FC = () => {
             </SafeAreaView>
           </View>
         </Modal>
+        </>
       )}
     </View>
   );
