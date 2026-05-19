@@ -17,10 +17,44 @@ import { useAuth } from '../contexts/AuthContext';
 import { Parcel, Alert as AlertType } from '../types/database.types';
 import { getTodayAlert, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { MapPin, Plus, Sprout, CloudSun, Leaf } from 'lucide-react-native';
+import { MapPin, Plus, Sprout, CloudSun, Leaf, Cloud, CloudRain, CloudSnow, CloudLightning } from 'lucide-react-native';
+import { fetchWeatherNews, WeatherNews } from '../utils/weather';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
+
+const WEATHER_CARD_THEME: Record<WeatherNews['icon'], { bg: string; iconBg: string; color: string }> = {
+  sun:   { bg: '#fffbeb', iconBg: '#fef3c7', color: '#d97706' },
+  cloud: { bg: '#f8fafc', iconBg: '#e2e8f0', color: '#64748b' },
+  rain:  { bg: '#eff6ff', iconBg: '#dbeafe', color: '#3b82f6' },
+  snow:  { bg: '#f0f9ff', iconBg: '#e0f2fe', color: '#0284c7' },
+  storm: { bg: '#fdf4ff', iconBg: '#f3e8ff', color: '#9333ea' },
+  leaf:  { bg: '#f0fdf4', iconBg: '#dcfce7', color: '#16a34a' },
+};
+
+const WEATHER_ICONS: Record<WeatherNews['icon'], React.FC<{ size: number; color: string }>> = {
+  sun:   CloudSun,
+  cloud: Cloud,
+  rain:  CloudRain,
+  snow:  CloudSnow,
+  storm: CloudLightning,
+  leaf:  Leaf,
+};
+
+const WeatherNewsCard: React.FC<{ item: WeatherNews }> = ({ item }) => {
+  const theme = WEATHER_CARD_THEME[item.icon];
+  const Icon = WEATHER_ICONS[item.icon];
+  return (
+    <View style={[styles.newsCard, { backgroundColor: theme.bg }]}>
+      <View style={[styles.newsIconWrap, { backgroundColor: theme.iconBg }]}>
+        <Icon size={18} color={theme.color} />
+      </View>
+      <Text style={styles.newsCardTag}>{item.tag}</Text>
+      <Text style={styles.newsCardTitle}>{item.title}</Text>
+      <Text style={styles.newsCardSub}>{item.sub}</Text>
+    </View>
+  );
+};
 
 interface ParcelWithAlert extends Parcel {
   alert?: AlertType | null;
@@ -33,12 +67,21 @@ export const DashboardScreen: React.FC = () => {
   const [parcels, setParcels] = useState<ParcelWithAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [weatherNews, setWeatherNews] = useState<WeatherNews[] | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     const cleanup = subscribeToAlerts();
     return cleanup;
   }, [user]);
+
+  useEffect(() => {
+    fetchWeatherNews().then((news) => {
+      setWeatherNews(news);
+      setWeatherLoading(false);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,30 +227,29 @@ export const DashboardScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* ── Actualités rapides ── */}
-        <Text style={styles.newsTitle}>Actualités agricoles</Text>
+        {/* ── Actualités météo temps réel ── */}
+        <Text style={styles.newsTitle}>Météo & Conseils</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.newsScroll}
           contentContainerStyle={styles.newsScrollContent}
         >
-          <View style={[styles.newsCard, { backgroundColor: '#eff6ff' }]}>
-            <View style={[styles.newsIconWrap, { backgroundColor: '#dbeafe' }]}>
-              <CloudSun size={18} color="#3b82f6" />
+          {weatherLoading ? (
+            <View style={[styles.newsCard, styles.newsCardLoading]}>
+              <ActivityIndicator size="small" color="#10b981" />
+              <Text style={styles.newsLoadingText}>Récupération météo...</Text>
             </View>
-            <Text style={styles.newsCardTag}>Tendance Météo</Text>
-            <Text style={styles.newsCardTitle}>Un printemps sec à prévoir sur le Centre-Val-de-Loire</Text>
-            <Text style={styles.newsCardSub}>Anticipez vos irrigations dès maintenant.</Text>
-          </View>
-          <View style={[styles.newsCard, { backgroundColor: '#f0fdf4' }]}>
-            <View style={[styles.newsIconWrap, { backgroundColor: '#dcfce7' }]}>
-              <Leaf size={18} color="#16a34a" />
+          ) : weatherNews ? (
+            weatherNews.map((item, i) => (
+              <WeatherNewsCard key={i} item={item} />
+            ))
+          ) : (
+            <View style={[styles.newsCard, { backgroundColor: '#f9fafb' }]}>
+              <Text style={styles.newsCardTag}>Météo indisponible</Text>
+              <Text style={styles.newsCardTitle}>Autorisez la localisation pour voir la météo en temps réel.</Text>
             </View>
-            <Text style={styles.newsCardTag}>Conseil IA</Text>
-            <Text style={styles.newsCardTitle}>Vérifiez l'humidité de vos sols après la vague de chaleur</Text>
-            <Text style={styles.newsCardSub}>Risque de stress hydrique élevé sur céréales.</Text>
-          </View>
+          )}
         </ScrollView>
 
         {/* Section header */}
@@ -527,6 +569,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1f2937',
     marginBottom: 10,
+  },
+  newsCardLoading: {
+    backgroundColor: '#f9fafb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 200,
+  },
+  newsLoadingText: {
+    fontSize: 13,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   newsScroll: {
     marginBottom: 20,
