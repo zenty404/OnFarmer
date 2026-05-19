@@ -22,7 +22,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [farmName, setFarmName] = useState(profile?.farm_name ?? '');
@@ -64,6 +64,7 @@ export const ProfileScreen: React.FC = () => {
         })
         .eq('id', user!.id);
       if (error) throw error;
+      await refreshProfile();
       Alert.alert('Succès', 'Profil mis à jour.');
       setHasChanges(false);
     } catch {
