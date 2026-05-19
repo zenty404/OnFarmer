@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Parcel, Alert as AlertType } from '../types/database.types';
 import { getTodayAlert, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { MapPin, Plus, Sprout } from 'lucide-react-native';
+import { MapPin, Plus, Sprout, CloudSun, Leaf } from 'lucide-react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
@@ -174,6 +174,42 @@ export const DashboardScreen: React.FC = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Hero Banner ── */}
+        <View style={styles.heroBanner}>
+          <Text style={styles.heroGreeting}>
+            Bonjour {profile?.full_name?.split(' ')[0] || 'Agriculteur'} 👋
+          </Text>
+          <Text style={styles.heroTagline}>
+            Votre assistant agricole propulsé par l'IA pour la surveillance météo et des risques.
+          </Text>
+        </View>
+
+        {/* ── Actualités rapides ── */}
+        <Text style={styles.newsTitle}>Actualités agricoles</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.newsScroll}
+          contentContainerStyle={styles.newsScrollContent}
+        >
+          <View style={[styles.newsCard, { backgroundColor: '#eff6ff' }]}>
+            <View style={[styles.newsIconWrap, { backgroundColor: '#dbeafe' }]}>
+              <CloudSun size={18} color="#3b82f6" />
+            </View>
+            <Text style={styles.newsCardTag}>Tendance Météo</Text>
+            <Text style={styles.newsCardTitle}>Un printemps sec à prévoir sur le Centre-Val-de-Loire</Text>
+            <Text style={styles.newsCardSub}>Anticipez vos irrigations dès maintenant.</Text>
+          </View>
+          <View style={[styles.newsCard, { backgroundColor: '#f0fdf4' }]}>
+            <View style={[styles.newsIconWrap, { backgroundColor: '#dcfce7' }]}>
+              <Leaf size={18} color="#16a34a" />
+            </View>
+            <Text style={styles.newsCardTag}>Conseil IA</Text>
+            <Text style={styles.newsCardTitle}>Vérifiez l'humidité de vos sols après la vague de chaleur</Text>
+            <Text style={styles.newsCardSub}>Risque de stress hydrique élevé sur céréales.</Text>
+          </View>
+        </ScrollView>
+
         {/* Section header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Mes parcelles</Text>
@@ -461,6 +497,75 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
+  },
+  heroBanner: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  heroGreeting: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginBottom: 6,
+  },
+  heroTagline: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 19,
+  },
+  newsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 10,
+  },
+  newsScroll: {
+    marginBottom: 20,
+  },
+  newsScrollContent: {
+    gap: 12,
+    paddingRight: 4,
+  },
+  newsCard: {
+    width: 220,
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+  },
+  newsIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  newsCardTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  newsCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1f2937',
+    lineHeight: 18,
+  },
+  newsCardSub: {
+    fontSize: 11,
+    color: '#6b7280',
+    lineHeight: 15,
   },
   fab: {
     position: 'absolute',
