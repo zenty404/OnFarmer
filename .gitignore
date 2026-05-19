@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+# Note: .env is tracked for this project (contains public keys only)
 
 # typescript
 *.tsbuildinfo
