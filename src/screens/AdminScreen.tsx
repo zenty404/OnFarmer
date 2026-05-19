@@ -10,12 +10,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Vibration,
+  Alert,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowLeft, Users, MapPin, BellRing, Activity,
-  Clock, Lock, Eye, EyeOff, ShieldAlert,
+  Clock, Lock, Eye, EyeOff, ShieldAlert, Bot, Webhook, Settings, X, CheckCircle2,
 } from 'lucide-react-native';
 import { supabase } from '../config/supabase';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -78,6 +81,7 @@ export const AdminScreen: React.FC = () => {
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [recentAlerts, setRecentAlerts] = useState<RecentAlert[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   useEffect(() => {
     if (unlocked) fetchAdminData();
@@ -284,10 +288,94 @@ export const AdminScreen: React.FC = () => {
             ))}
           </View>
 
+          {/* ── Configuration Système ── */}
+          <Text style={styles.sectionTitle}>Configuration Système</Text>
+          <View style={styles.configCard}>
+            <View style={styles.configRow}>
+              <View style={[styles.configIconWrap, { backgroundColor: '#ede9fe' }]}>
+                <Bot size={20} color="#7c3aed" />
+              </View>
+              <View style={styles.configInfo}>
+                <Text style={styles.configLabel}>Modèle IA actif</Text>
+                <Text style={styles.configValue}>GPT-4o via Make.com</Text>
+              </View>
+              <View style={styles.configStatus}>
+                <CheckCircle2 size={16} color="#10b981" />
+                <Text style={styles.configStatusText}>Actif</Text>
+              </View>
+            </View>
+
+            <View style={[styles.configRow, { borderTopWidth: 1, borderTopColor: '#f3f4f6' }]}>
+              <View style={[styles.configIconWrap, { backgroundColor: '#fef3c7' }]}>
+                <Webhook size={20} color="#d97706" />
+              </View>
+              <View style={styles.configInfo}>
+                <Text style={styles.configLabel}>Webhook Make</Text>
+                <Text style={styles.configValue}>hook.eu2.make.com/••••••</Text>
+              </View>
+              <View style={styles.configStatus}>
+                <CheckCircle2 size={16} color="#10b981" />
+                <Text style={styles.configStatusText}>Connecté</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.manageAIButton}
+              onPress={() => setShowAIModal(true)}
+              activeOpacity={0.85}
+            >
+              <Settings size={16} color="#fff" />
+              <Text style={styles.manageAIText}>Gérer le modèle IA et les webhooks Make</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity style={styles.refreshButton} onPress={fetchAdminData}>
             <Text style={styles.refreshText}>Actualiser les données</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* ── Modal config IA ── */}
+        <Modal visible={showAIModal} animationType="slide" transparent presentationStyle="overFullScreen">
+          <View style={styles.modalOverlay}>
+            <SafeAreaView style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Configuration IA & Webhooks</Text>
+                <TouchableOpacity style={styles.modalClose} onPress={() => setShowAIModal(false)}>
+                  <X size={18} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                {[
+                  { label: 'Modèle IA', value: 'GPT-4o (OpenAI via Make)', icon: Bot, color: '#7c3aed' },
+                  { label: 'Scénario Make', value: 'OnFarmer — Analyse Météo v2', icon: Settings, color: '#d97706' },
+                  { label: 'Webhook URL', value: 'hook.eu2.make.com/[token]', icon: Webhook, color: '#3b82f6' },
+                  { label: 'Déclencheur', value: 'POST JSON — parcel_id, latitude, longitude', icon: Activity, color: '#10b981' },
+                  { label: 'Délai moyen', value: '8 – 15 secondes par parcelle', icon: Clock, color: '#f59e0b' },
+                ].map(({ label, value, icon: Icon, color }) => (
+                  <View key={label} style={styles.modalRow}>
+                    <View style={[styles.modalRowIcon, { backgroundColor: color + '18' }]}>
+                      <Icon size={16} color={color} />
+                    </View>
+                    <View>
+                      <Text style={styles.modalRowLabel}>{label}</Text>
+                      <Text style={styles.modalRowValue}>{value}</Text>
+                    </View>
+                  </View>
+                ))}
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={() => {
+                    setShowAIModal(false);
+                    Alert.alert('Modification', 'Dans une version production, cette section permettrait de modifier le modèle IA, l\'URL du webhook et les paramètres d\'analyse.');
+                  }}
+                >
+                  <Text style={styles.modalActionText}>Modifier la configuration</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -375,4 +463,57 @@ const styles = StyleSheet.create({
     borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e7eb',
   },
   refreshText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  configCard: {
+    backgroundColor: '#fff', borderRadius: 16, marginBottom: 24, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
+  },
+  configRow: {
+    flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12,
+  },
+  configIconWrap: {
+    width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center',
+  },
+  configInfo: { flex: 1 },
+  configLabel: { fontSize: 12, color: '#9ca3af', fontWeight: '600', marginBottom: 2 },
+  configValue: { fontSize: 13, fontWeight: '600', color: '#1f2937' },
+  configStatus: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  configStatusText: { fontSize: 12, color: '#10b981', fontWeight: '600' },
+  manageAIButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#7c3aed', margin: 14, borderRadius: 10, paddingVertical: 12,
+  },
+  manageAIText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    maxHeight: '80%', paddingHorizontal: 20,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb',
+    alignSelf: 'center', marginTop: 12, marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#1f2937' },
+  modalClose: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: '#f3f4f6',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  modalScroll: { paddingTop: 12 },
+  modalRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9fafb',
+  },
+  modalRowIcon: {
+    width: 34, height: 34, borderRadius: 8, justifyContent: 'center', alignItems: 'center',
+  },
+  modalRowLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600', marginBottom: 2 },
+  modalRowValue: { fontSize: 13, fontWeight: '600', color: '#1f2937' },
+  modalActionButton: {
+    backgroundColor: '#7c3aed', borderRadius: 12, paddingVertical: 14,
+    alignItems: 'center', marginVertical: 20,
+  },
+  modalActionText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
