@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Parcel, Alert as AlertType } from '../types/database.types';
 import { getTodayAlert, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { MapPin, Plus, LogOut, Sprout } from 'lucide-react-native';
+import { MapPin, Plus, Sprout } from 'lucide-react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
@@ -29,7 +29,7 @@ interface ParcelWithAlert extends Parcel {
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const [parcels, setParcels] = useState<ParcelWithAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -107,23 +107,6 @@ export const DashboardScreen: React.FC = () => {
     }
   }, [user]);
 
-  const handleSignOut = async () => {
-    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Déconnecter',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            Alert.alert('Erreur', 'Impossible de se déconnecter.');
-          }
-        },
-      },
-    ]);
-  };
-
   const onRefresh = () => {
     setRefreshing(true);
     fetchParcels();
@@ -148,8 +131,18 @@ export const DashboardScreen: React.FC = () => {
             Bonjour, {profile?.full_name || 'Agriculteur'} 👋
           </Text>
         </View>
-        <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
-          <LogOut size={20} color="#ef4444" />
+        <TouchableOpacity
+          style={styles.avatarButton}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Text style={styles.avatarText}>
+            {(profile?.full_name ?? user?.email ?? '?')
+              .split(' ')
+              .map((w: string) => w[0])
+              .slice(0, 2)
+              .join('')
+              .toUpperCase()}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -307,10 +300,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     marginTop: 3,
   },
-  logoutButton: {
-    padding: 10,
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#fff',
-    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#10b981',
   },
   statsBar: {
     flexDirection: 'row',
