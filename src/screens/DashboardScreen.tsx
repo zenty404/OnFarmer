@@ -169,7 +169,12 @@ export const DashboardScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>🌾 OnFarmer</Text>
+          <View style={styles.logoRow}>
+            <View style={styles.logoIconBg}>
+              <Sprout size={16} color="#10b981" />
+            </View>
+            <Text style={styles.headerTitle}>OnFarmer</Text>
+          </View>
           <Text style={styles.headerSubtitle}>
             Bonjour, {profile?.full_name || 'Agriculteur'} 👋
           </Text>
@@ -367,6 +372,20 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  logoIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 22,
