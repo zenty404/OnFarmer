@@ -30,8 +30,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
-# Note: .env is tracked for this project (contains public keys only)
 
 # typescript
 *.tsbuildinfo
