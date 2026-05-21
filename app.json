@@ -49,6 +49,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Autoriser OnFarmer à accéder à votre position pour localiser vos parcelles."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#10b981"
+        }
       ]
     ],
     "extra": {

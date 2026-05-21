@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
+import { Parcel } from '../types/database.types';
 import { AuthScreen } from '../screens/AuthScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MapScreen } from '../screens/MapScreen';
@@ -15,7 +16,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Map: undefined;
   ParcelDetail: { parcelId: string };
-  AddParcel: undefined;
+  AddParcel: { parcel?: Parcel } | undefined;
   Profile: undefined;
   Admin: undefined;
 };

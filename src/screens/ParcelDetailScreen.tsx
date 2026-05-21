@@ -8,13 +8,15 @@ import {
   Alert as RNAlert,
   ActivityIndicator,
 } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../config/supabase';
 import { Parcel, Alert, WeatherLog } from '../types/database.types';
 import { getActiveAlerts, getPastAlerts, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
-import { ArrowLeft, MapPin, Droplets, ThermometerSun, Wind, RefreshCw, History, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { WeatherChart } from '../components/WeatherChart';
+import { AlertsChart } from '../components/AlertsChart';
+import { ArrowLeft, MapPin, Droplets, ThermometerSun, Wind, RefreshCw, History, ChevronDown, ChevronUp, Edit2, Trash2 } from 'lucide-react-native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type ParcelDetailRouteProp = RouteProp<RootStackParamList, 'ParcelDetail'>;
@@ -52,6 +54,12 @@ export const ParcelDetailScreen: React.FC = () => {
       cleanup();
     };
   }, [parcelId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchParcelData();
+    }, [parcelId])
+  );
 
   const subscribeToAlerts = () => {
     const channel = supabase
@@ -162,7 +170,7 @@ export const ParcelDetailScreen: React.FC = () => {
         .select('*')
         .eq('parcel_id', parcelId)
         .order('recorded_at', { ascending: false })
-        .limit(5);
+        .limit(20);
 
       if (logsData && isMounted.current) setWeatherLogs(logsData);
     } catch (err) {
@@ -198,6 +206,35 @@ export const ParcelDetailScreen: React.FC = () => {
     }
   };
 
+  const handleEditParcel = () => {
+    if (!parcel) return;
+    navigation.navigate('AddParcel', { parcel });
+  };
+
+  const handleDeleteParcel = () => {
+    RNAlert.alert(
+      'Supprimer la parcelle',
+      `Êtes-vous sûr de vouloir supprimer "${parcel?.name}" ? Cette action est irréversible et supprimera toutes les données associées (alertes, historique météo, etc.).`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('parcels').delete().eq('id', parcelId);
+              if (error) throw error;
+              navigation.goBack();
+            } catch (err) {
+              console.error('Error deleting parcel:', err);
+              RNAlert.alert('Erreur', 'Impossible de supprimer la parcelle.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading || !parcel) {
     return (
       <View style={styles.centerContainer}>
@@ -220,6 +257,14 @@ export const ParcelDetailScreen: React.FC = () => {
           {parcel.crop_type ? (
             <Text style={styles.headerSubtitle}>{parcel.crop_type}</Text>
           ) : null}
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleEditParcel} style={styles.headerButton}>
+            <Edit2 size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDeleteParcel} style={styles.headerButton}>
+            <Trash2 size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -257,6 +302,10 @@ export const ParcelDetailScreen: React.FC = () => {
         {/* Alertes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Prévisions & Alertes</Text>
+
+          {!loadingAlert && !analysisTimedOut && alerts.length > 0 && (
+            <AlertsChart alerts={alerts} />
+          )}
 
           {loadingAlert ? (
             <View style={styles.aiLoadingCard}>
@@ -341,7 +390,8 @@ export const ParcelDetailScreen: React.FC = () => {
         {weatherLogs.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Historique météo</Text>
-            {weatherLogs.map((log) => (
+            <WeatherChart weatherLogs={weatherLogs} />
+            {weatherLogs.slice(0, 5).map((log) => (
               <View key={log.id} style={styles.weatherCard}>
                 <Text style={styles.weatherDate}>
                   {new Date(log.recorded_at).toLocaleDateString('fr-FR', {
@@ -419,6 +469,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    padding: 8,
   },
   scroll: {
     flex: 1,

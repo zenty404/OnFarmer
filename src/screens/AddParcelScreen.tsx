@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { supabase } from '../config/supabase';
@@ -23,13 +23,19 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddParcel'>
 
 export const AddParcelScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddParcel'>>();
   const { user } = useAuth();
 
-  const [name, setName] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
-  const [cropType, setCropType] = useState('');
-  const [areaHectares, setAreaHectares] = useState('');
+  const parcel = route.params?.parcel;
+  const isEditMode = !!parcel;
+
+  const [name, setName] = useState(parcel?.name || '');
+  const [latitude, setLatitude] = useState(parcel ? parcel.latitude.toString() : '');
+  const [longitude, setLongitude] = useState(parcel ? parcel.longitude.toString() : '');
+  const [cropType, setCropType] = useState(parcel?.crop_type || '');
+  const [areaHectares, setAreaHectares] = useState(
+    parcel?.area_hectares ? parcel.area_hectares.toString() : ''
+  );
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
 
@@ -78,15 +84,29 @@ export const AddParcelScreen: React.FC = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('parcels').insert({
-        user_id: user!.id,
-        name: name.trim(),
-        latitude: lat,
-        longitude: lon,
-        crop_type: cropType.trim() || null,
-        area_hectares: areaHectares ? parseFloat(areaHectares) || null : null,
-      });
-      if (error) throw error;
+      if (isEditMode && parcel) {
+        const { error } = await supabase
+          .from('parcels')
+          .update({
+            name: name.trim(),
+            latitude: lat,
+            longitude: lon,
+            crop_type: cropType.trim() || null,
+            area_hectares: areaHectares ? parseFloat(areaHectares) || null : null,
+          })
+          .eq('id', parcel.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('parcels').insert({
+          user_id: user!.id,
+          name: name.trim(),
+          latitude: lat,
+          longitude: lon,
+          crop_type: cropType.trim() || null,
+          area_hectares: areaHectares ? parseFloat(areaHectares) || null : null,
+        });
+        if (error) throw error;
+      }
       navigation.goBack();
     } catch (err) {
       console.error('Error saving parcel:', err);
@@ -110,7 +130,9 @@ export const AddParcelScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nouvelle parcelle</Text>
+        <Text style={styles.headerTitle}>
+          {isEditMode ? 'Modifier la parcelle' : 'Nouvelle parcelle'}
+        </Text>
       </View>
 
       <ScrollView
@@ -230,7 +252,9 @@ export const AddParcelScreen: React.FC = () => {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Enregistrer la parcelle</Text>
+            <Text style={styles.saveButtonText}>
+              {isEditMode ? 'Mettre à jour' : 'Enregistrer la parcelle'}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>

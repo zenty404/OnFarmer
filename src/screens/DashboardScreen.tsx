@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Parcel, Alert as AlertType } from '../types/database.types';
 import { getTodayAlert, triggerAIAnalysis, getAlertColor } from '../utils/alerts';
 import { AlertCard } from '../components/AlertCard';
+import { sendAlertNotification } from '../utils/notifications';
 import { MapPin, Plus, Sprout, CloudSun, Leaf, Cloud, CloudRain, CloudSnow, CloudLightning } from 'lucide-react-native';
 import { fetchWeatherNews, WeatherNews } from '../utils/weather';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -97,6 +98,7 @@ export const DashboardScreen: React.FC = () => {
         { event: 'INSERT', schema: 'public', table: 'alertes' },
         (payload) => {
           const newAlert = payload.new as AlertType;
+          sendAlertNotification(newAlert);
           setParcels((prev) =>
             prev.map((p) =>
               p.id === newAlert.parcel_id
