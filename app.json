@@ -15,7 +15,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.onfarmer.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Nous avons besoin de votre localisation pour afficher vos parcelles sur la carte."
+        "NSLocationWhenInUseUsageDescription": "Nous avons besoin de votre localisation pour afficher vos parcelles sur la carte.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -29,7 +30,9 @@
       "package": "com.onfarmer.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -47,6 +50,12 @@
           "locationAlwaysAndWhenInUsePermission": "Autoriser OnFarmer à accéder à votre position pour localiser vos parcelles."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6f04cb55-e689-4c02-ba8c-57702e639dce"
+      }
+    },
+    "owner": "zenty"
   }
 }
